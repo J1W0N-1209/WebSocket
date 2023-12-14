@@ -16,7 +16,7 @@ public class ChatController {
     private final ChatService service;
 
     @PostMapping
-    public ChatRoom createRoom(@@RequestParam String name) {
+    public ChatRoom createRoom(@RequestParam String name) {
         return service.createRoom(name);
     }
 
