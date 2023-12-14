@@ -1,8 +1,12 @@
 package com.example.websocket.handler;
 
+import com.example.websocket.dto.ChatDTO;
+import com.example.websocket.dto.ChatRoom;
+import com.example.websocket.service.ChatService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.catalina.User;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -17,12 +21,21 @@ import java.util.Set;
 @Component
 @RequiredArgsConstructor
 public class WebSocketHandler extends TextWebSocketHandler {
+    private final ObjectMapper mapper;
     private final Set<WebSocketSession> sessions = new HashSet<>();
+    private final ChatService service;
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         String payload = message.getPayload();
-        sendMessageToEvery(sessions,payload);
+        log.info("payload {}", payload);
+
+        ChatDTO chatMessage = mapper.readValue(payload, ChatDTO.class);
+        log.info("session {}",chatMessage.toString());
+
+        ChatRoom room = service.findRoomById(chatMessage.getRoomId());
+
+        room.handleAction(session,chatMessage,service);
     }
 
     // 웹소켓이 연결됬을 때
@@ -37,15 +50,5 @@ public class WebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         log.info("{} Disconnect",session.getId());
         sessions.remove(session);
-    }
-
-    private void sendMessageToEvery(Set<WebSocketSession> sessions,String message) {
-        sessions.parallelStream().forEach(sess -> {
-            try {
-                sess.sendMessage(new TextMessage(message));
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
     }
 }
